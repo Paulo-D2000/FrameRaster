@@ -20,9 +20,9 @@ Then install spirv-tools
 
 #### Build
 
-`git clone ...`
-`cd FrameRaster`
-`mkdir build`
-`cd build`
-`cmake ..`
+`git clone https://github.com/Paulo-D2000/FrameRaster.git --recursive`\
+`cd FrameRaster`\
+`mkdir build`\
+`cd build`\
+`cmake ..`\
 `make`
