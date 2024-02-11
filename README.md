@@ -1,5 +1,9 @@
 # FrameRaster 
 
+![img](image.png)
+
+Program Screenshot
+
 #### Deps Setup (Linux x86_64)
 
 Install X11 deps...
