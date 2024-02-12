@@ -25,6 +25,7 @@
 //#include <vulkan/vulkan_beta.h>
 #include <vector>
 #include <fstream>
+#include <filesystem>
 #include <misc/cpp/imgui_stdlib.h>
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
@@ -647,10 +648,20 @@ void fill(size_t pos, size_t size, uint32_t val, MyTextureData& tex){
     }   
 }
 
+void clearTexture(MyTextureData& my_texture){
+    for (size_t i = 0; i < my_texture.Width*my_texture.Height; i++)
+    {
+        my_texture.HostTexurePtr[i*4 + 0] = 0;   // R
+        my_texture.HostTexurePtr[i*4 + 1] = 0;   // G
+        my_texture.HostTexurePtr[i*4 + 2] = 0;   // B
+        my_texture.HostTexurePtr[i*4 + 3] = 255; // A
+    }
+}
+
 std::vector<char> loadFile(std::string filepath){
     std::vector<char> bits;
     std::ifstream stream(filepath);
-    if(!stream){
+    if(stream.fail() || !std::filesystem::exists(filepath) || !std::filesystem::is_regular_file(filepath)){
         return bits;
     }
     std::vector<char> bytes((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
@@ -751,18 +762,12 @@ int main(int, char**)
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Make texture
-    MyTextureData my_texture;
+    MyTextureData my_texture = MyTextureData();
     bool ret = CreateTexture_RGBA(256, 256, &my_texture);
     IM_ASSERT(ret);
 
-    // Fill texture
-    for (size_t i = 0; i < my_texture.Width*my_texture.Height; i++)
-    {
-        my_texture.HostTexurePtr[i*4 + 0] = 0;   // R
-        my_texture.HostTexurePtr[i*4 + 1] = 0;   // G
-        my_texture.HostTexurePtr[i*4 + 2] = 0;   // B
-        my_texture.HostTexurePtr[i*4 + 3] = 255; // A
-    }
+    // Clear texture
+    clearTexture(my_texture);
 
     // Unpack Bits (MSB First)
     std::vector<char> bits;
@@ -797,51 +802,16 @@ int main(int, char**)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
-
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-        {
-            static float f = 0.0f;
-            static int counter = 0;
-
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            ImGui::End();
-        }
-
-        // 3. Show another simple window.
-        if (show_another_window)
-        {
-            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
-            ImGui::End();
-        }
-
         // Draw the texture
         {
             ImGui::Begin("Frame Raster");
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
             ImGui::Text("Raster pointer = %p", my_texture.DS);
             ImGui::Text("Raster size = %d x %d", my_texture.Width, my_texture.Height);
             ImGui::Image((ImTextureID)my_texture.DS, ImVec2(my_texture.Width, my_texture.Height));
             ImGui::Text("File Path:");
             ImGui::InputText("##Filepath", &str);
+            ImGui::SameLine();
             if(ImGui::Button("Load")){
                 bits = loadFile(str);
                 if(bits.size()==0){
@@ -864,7 +834,6 @@ int main(int, char**)
                 uint32_t pix_col = bits[i] ? 0xFF00FFFF : 0xFFFF0000;
                 fill(i, 2, pix_col, my_texture);
             }
-
             
             // Update texture
             UploadTexture_RGBA(&my_texture);
