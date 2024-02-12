@@ -813,6 +813,7 @@ int main(int, char**)
             ImGui::InputText("##Filepath", &str);
             ImGui::SameLine();
             if(ImGui::Button("Load")){
+                clearTexture(my_texture);
                 bits = loadFile(str);
                 if(bits.size()==0){
                     ImGui::OpenPopup("Error");
