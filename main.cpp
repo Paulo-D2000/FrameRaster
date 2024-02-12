@@ -24,6 +24,8 @@
 #include <vulkan/vulkan.h>
 //#include <vulkan/vulkan_beta.h>
 #include <vector>
+#include <fstream>
+#include <misc/cpp/imgui_stdlib.h>
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
@@ -645,6 +647,23 @@ void fill(size_t pos, size_t size, uint32_t val, MyTextureData& tex){
     }   
 }
 
+std::vector<char> loadFile(std::string filepath){
+    std::vector<char> bits;
+    std::ifstream stream(filepath);
+    if(!stream){
+        return bits;
+    }
+    std::vector<char> bytes((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+    for (size_t i = 0; i < bytes.size(); i++)
+    {
+        for (size_t j = 0; j < 8; j++)
+        {
+            bits.push_back((bytes[i] >> (7-j)) & 0x01);
+        }
+    }
+    return bits;
+}
+
 // Main code
 int main(int, char**)
 {
@@ -745,22 +764,9 @@ int main(int, char**)
         my_texture.HostTexurePtr[i*4 + 3] = 255; // A
     }
 
-    // Bytes
-    std::vector<unsigned char> bytes = {0xaa,0xaa,0xaa,0xaa,0x1a,0xcf,0xfc,0x1d,0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,
-                                        0xaa,0xaa,0xaa,0xaa,0x1a,0xcf,0xfc,0x1d,0x01,0x11,0x21,0x31,0x41,0x51,0x61,0x71,
-                                        0xaa,0xaa,0xaa,0xaa,0x1a,0xcf,0xfc,0x1d,0x02,0x12,0x22,0x32,0x42,0x52,0x62,0x72,
-                                        0xaa,0xaa,0xaa,0xaa,0x1a,0xcf,0xfc,0x1d,0x03,0x13,0x23,0x33,0x43,0x53,0x63,0x73};
-
     // Unpack Bits (MSB First)
     std::vector<char> bits;
-    for (size_t i = 0; i < bytes.size(); i++)
-    {
-        for (size_t j = 0; j < 8; j++)
-        {
-            bits.push_back((bytes[i] >> (7-j)) & 0x01);
-        }
-    }
-    
+    std::string str = "";
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -830,10 +836,25 @@ int main(int, char**)
 
         // Draw the texture
         {
-            ImGui::Begin("Vulkan Texture Test");
-            ImGui::Text("pointer = %p", my_texture.DS);
-            ImGui::Text("size = %d x %d", my_texture.Width, my_texture.Height);
+            ImGui::Begin("Frame Raster");
+            ImGui::Text("Raster pointer = %p", my_texture.DS);
+            ImGui::Text("Raster size = %d x %d", my_texture.Width, my_texture.Height);
             ImGui::Image((ImTextureID)my_texture.DS, ImVec2(my_texture.Width, my_texture.Height));
+            ImGui::Text("File Path:");
+            ImGui::InputText("##Filepath", &str);
+            if(ImGui::Button("Load")){
+                bits = loadFile(str);
+                if(bits.size()==0){
+                    ImGui::OpenPopup("Error");
+                }
+            }
+            if(ImGui::BeginPopupModal("Error")){
+                ImGui::Text("File Error");
+                if(ImGui::Button("Ok")){
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
             ImGui::End();
 
             // CPU draw
@@ -843,7 +864,7 @@ int main(int, char**)
                 uint32_t pix_col = bits[i] ? 0xFF00FFFF : 0xFFFF0000;
                 fill(i, 2, pix_col, my_texture);
             }
-            
+
             
             // Update texture
             UploadTexture_RGBA(&my_texture);
